@@ -116,22 +116,22 @@ class EM(object):
         self.k = k
         self.n_iter = n_iter
         self.eps = eps
-        self.param_mat = []
+        self.dim_dict = {}
 
     # initial guesses for parameters
     def init_params(self, data):
         """
         Initialize distribution params:
-        Every row corresponds to a column in data : [w, mu, sigma]
         """
-        w_init = np.zeros_like((data[0])) + (1 / self.k)
-        cur_mu = data.mean(axis=0)
-        cur_std = data.std(axis=0)
-        rand_min_mu = cur_mu - (2 * cur_std)
-        rand_max_mu = cur_mu + (2 * cur_std)
-        mu_init = np.random.uniform(rand_min_mu, rand_max_mu)
-        std_init = [np.random.uniform(0, 3) for _ in range(data.shape[1])]
-        self.param_mat = np.column_stack((w_init, mu_init, std_init))
+        for dim in range(data.shape[1]):
+            w_init = np.array([0 for _ in range(self.k)]) + (1 / self.k)
+            cur_mu = X_training[:, dim].mean()
+            cur_std = X_training[:, dim].std()
+            rand_min_mu = cur_mu - (2 * cur_std)
+            rand_max_mu = cur_mu + (2 * cur_std)
+            mu_init = [np.random.uniform(rand_min_mu, rand_max_mu) for _ in range(self.k)]
+            std_init = [np.random.uniform(0, 3) for _ in range(self.k)]
+            self.dim_dict[dim] = np.column_stack((w_init, mu_init, std_init))
 
     def expectation(self, data):
         """
@@ -158,7 +158,6 @@ class EM(object):
 
     def get_dist_params(self):
         pass
-
 
 
 

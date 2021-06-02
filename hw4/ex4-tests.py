@@ -1,66 +1,35 @@
 import numpy as np
+import pandas as pd
 
-data = np.array([[1, 2, 10], [3, 4, 12]])
-vec1 = np.array([1, 7])
-# print(vec1)
-vec2 = np.array([4, 4])
-# nate = np.column_stack((vec1, vec2))
-# print(nate)
-# X_folds = np.split(vec1, 5, axis=0)
-# print(X_folds)
-# print(type(X_folds))
-# nate2 = np.random.uniform(1, 5)
-# print(nate2)
-#
-# nate3 = np.random.uniform(vec1, vec2)
-# print(nate3)
-# print(vec1 - vec2)
-#
-#
-# nate4 = np.zeros_like((mat[0])) + 4
-#
-# print(nate4)
-
-
-w_init = np.zeros_like((data[0])) + (1 / 3)
-cur_mu = data.mean(axis=0)
-cur_std = data.std(axis=0)
-rand_min_mu = cur_mu - (2 * cur_std)
-rand_max_mu = cur_mu + (2 * cur_std)
-mu_init = np.random.uniform(rand_min_mu, rand_max_mu)
-std_init = [np.random.uniform(0, 3) for _ in range(data.shape[1])]
-param_mat = np.column_stack((w_init, mu_init, std_init))
-
-print(param_mat.shape)
-print(param_mat)
+training_set = pd.read_csv('training_set.csv')
+test_set = pd.read_csv('test_set.csv')
+X_training, y_training = training_set[['x1', 'x2']].values, training_set['y'].values
+X_test, y_test = test_set[['x1', 'x2']].values, test_set['y'].values
+np.random.seed(42)
 
 
 
-# print(X_training.std(axis=0))
-# print(X_training.shape)
-# print(X_training[:, 0].mean())
-# print(X_training[:, 1].mean())
-
-# cur_mu = X_training.mean(axis=0)
-# cur_std = X_training.std(axis=0)
-# print("cur_mu: ", cur_mu)
-# print("cur_std: ", cur_std)
-# rand_min_mu = cur_mu - (2 * cur_std)
-# rand_max_mu = cur_mu + (2 * cur_std)
-# print(rand_min_mu)
-# print(rand_max_mu)
-# mu = np.random.uniform(rand_min_mu, rand_max_mu)
-# w = [2, 2]
-#
-# print("mu", mu)
-# std_init = [np.random.uniform(0, 3) for x in range(2)]
-# print("std_init", std_init)
-# print(np.column_stack((w, mu, std_init)))
+# calc normal pdf
+def norm_pdf(data, mu, sigma):
+    exp = (((data - mu) / sigma) ** 2) / (-2)
+    base_inv = sigma * ((2 * np.pi) ** 0.5)
+    return (np.e ** exp) / base_inv
 
 
-# cur_mu = cur_mu / 2
-# print(cur_mu)
-# dim_ind_vec = [x + 1 for x in range(2)]
-# cur_mu = cur_mu * dim_ind_vec
-# print(dim_ind_vec)
-# print(cur_mu)
+# print("param_mat", param_mat)
+
+k = 2
+dim_dict = {}
+for dim in range(X_training.shape[1]):
+    w_init = np.array([0 for _ in range(k)]) + (1 / k)
+    cur_mu = X_training[:, dim].mean()
+    cur_std = X_training[:, dim].std()
+    rand_min_mu = cur_mu - (2 * cur_std)
+    rand_max_mu = cur_mu + (2 * cur_std)
+    mu_init = [np.random.uniform(rand_min_mu, rand_max_mu) for _ in range(k)]
+    std_init = [np.random.uniform(0, 3) for _ in range(k)]
+    dim_dict[dim] = np.column_stack((w_init, mu_init, std_init))
+
+
+
+print(dim_dict)
