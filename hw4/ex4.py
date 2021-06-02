@@ -116,7 +116,8 @@ class EM(object):
         self.k = k
         self.n_iter = n_iter
         self.eps = eps
-        self.dim_dict = {}
+        self.dim_gaussians_dict = {}
+        self.responsibilities_dict = {}
 
     # initial guesses for parameters
     def init_params(self, data):
@@ -131,13 +132,15 @@ class EM(object):
             rand_max_mu = cur_mu + (2 * cur_std)
             mu_init = [np.random.uniform(rand_min_mu, rand_max_mu) for _ in range(self.k)]
             std_init = [np.random.uniform(0, 3) for _ in range(self.k)]
-            self.dim_dict[dim] = np.column_stack((w_init, mu_init, std_init))
+            self.dim_gaussians_dict[dim] = np.column_stack((w_init, mu_init, std_init))
 
     def expectation(self, data):
         """
         E step - calculating responsibilities
         """
-        pass
+        self.init_params(data)
+        for dim in self.dim_gaussians_dict.keys():
+            self.responsibilities_dict[dim] = np.array([norm_pdf(point, self.dim_gaussians_dict[dim][:, 1], self.dim_gaussians_dict[dim][:, 2]) for point in data[:, dim]])
 
     def maximization(self, data):
         """
@@ -161,6 +164,10 @@ class EM(object):
 
 
 
+em = EM(k=2)
+em.expectation(X_training)
+print(em.responsibilities_dict[0])
+print(em.responsibilities_dict[0].shape)
 
 
 
