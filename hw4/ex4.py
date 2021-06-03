@@ -118,6 +118,7 @@ class EM(object):
         self.eps = eps
         self.dim_gaussians_dict = {}
         self.responsibilities_dict = {}
+        self.cost_list = []  # a list of the costs that you've calculated in each iteration
 
     # initial guesses for parameters
     def init_params(self, data):
@@ -134,34 +135,37 @@ class EM(object):
             std_init = [np.random.uniform(0, 3) for _ in range(self.k)]
             self.dim_gaussians_dict[dim] = np.column_stack((w_init, mu_init, std_init))
 
-    def expectation(self, data):
+    def compute_gmm_cost(self, data, dim):
+        responsibilities_mat = np.array([norm_pdf(point, self.dim_gaussians_dict[dim][:, 1], self.dim_gaussians_dict[dim][:, 2]) for point in data[:, dim]])
+        responsibilities_mat = responsibilities_mat * self.dim_gaussians_dict[dim][:, 0]
+        responsibilities_mat = np.log(np.sum(responsibilities_mat, axis=1))
+        return np.sum(responsibilities_mat) * (-1)
+
+    def expectation(self, data, dim):
         """
         E step - calculating responsibilities
         """
-        self.init_params(data)
-        for dim in self.dim_gaussians_dict.keys():
-            responsibilities_mat = np.array([norm_pdf(point, self.dim_gaussians_dict[dim][:, 1], self.dim_gaussians_dict[dim][:, 2]) for point in data[:, dim]])
-            responsibilities_mat = responsibilities_mat * self.dim_gaussians_dict[dim][:, 0]
-            responsibilities_vec_sum_axis1 = np.sum(responsibilities_mat, axis=1)
-            self.responsibilities_dict[dim] = np.transpose((np.transpose(responsibilities_mat) / responsibilities_vec_sum_axis1))
+        responsibilities_mat = np.array([norm_pdf(point, self.dim_gaussians_dict[dim][:, 1], self.dim_gaussians_dict[dim][:, 2]) for point in data[:, dim]])
+        responsibilities_mat = responsibilities_mat * self.dim_gaussians_dict[dim][:, 0]
+        responsibilities_vec_sum_axis1 = np.sum(responsibilities_mat, axis=1)
+        self.responsibilities_dict[dim] = np.transpose((np.transpose(responsibilities_mat) / responsibilities_vec_sum_axis1))
 
-    def maximization(self, data):
+    def maximization(self, data, dim):
         """
         M step - updating distribution params
         """
-        for dim in self.dim_gaussians_dict.keys():
-            # updating weights
-            responsibilities_avg_vec = np.sum(self.responsibilities_dict[dim], axis=0)
-            self.dim_gaussians_dict[dim][:, 0] = responsibilities_avg_vec / data.shape[0]
+        # updating weights
+        responsibilities_avg_vec = np.sum(self.responsibilities_dict[dim], axis=0)
+        self.dim_gaussians_dict[dim][:, 0] = responsibilities_avg_vec / data.shape[0]
 
-            # updating means
-            mu_sum = np.sum(np.transpose((np.transpose(self.responsibilities_dict[dim])) * data[:, dim]), axis=0)
-            self.dim_gaussians_dict[dim][:, 1] = mu_sum / responsibilities_avg_vec
+        # updating means
+        mu_sum = np.sum(np.transpose((np.transpose(self.responsibilities_dict[dim])) * data[:, dim]), axis=0)
+        self.dim_gaussians_dict[dim][:, 1] = mu_sum / responsibilities_avg_vec
 
-            # updating stds
-            x_i_columns = np.transpose(np.transpose(np.zeros_like(self.responsibilities_dict[dim])) + data[:, dim])
-            std_sum = np.sum(self.responsibilities_dict[dim] * ((x_i_columns - self.dim_gaussians_dict[dim][:, 1]) ** 2), axis=0)
-            self.dim_gaussians_dict[dim][:, 2] = std_sum / responsibilities_avg_vec
+        # updating stds
+        x_i_columns = np.transpose(np.transpose(np.zeros_like(self.responsibilities_dict[dim])) + data[:, dim])
+        std_sum = np.sum(self.responsibilities_dict[dim] * ((x_i_columns - self.dim_gaussians_dict[dim][:, 1]) ** 2), axis=0)
+        self.dim_gaussians_dict[dim][:, 2] = ((std_sum / responsibilities_avg_vec) ** 0.5)
 
     def fit(self, data):
         """
@@ -172,27 +176,45 @@ class EM(object):
         Stop the function when the difference between the previous cost and the current is less than eps
         or when you reach n_iter.
         """
-        pass
+        self.init_params(data)
+        for dim in self.dim_gaussians_dict.keys():
+            J_history = []
+            k = 0
+            curr_cost = self.compute_gmm_cost(data, dim)
+            J_history.append(0)
+            while (abs(curr_cost - J_history[len(J_history) - 1]) > self.eps) and (k < self.n_iter):
+                if k == 0:
+                    J_history.pop()
+                k += 1
+                J_history.append(curr_cost)
+                self.expectation(data=data, dim=dim)
+                self.maximization(data=data, dim=dim)
+                curr_cost = self.compute_gmm_cost(data, dim)
 
     def get_dist_params(self):
-        pass
+        return self.dim_gaussians_dict
 
 
 
 em = EM(k=2)
-em.expectation(X_training)
-nate = em.responsibilities_dict[0]
-print(em.responsibilities_dict[0])
-print(em.responsibilities_dict[0].shape)
-print(np.sum(nate, axis=1))
-print("SPACE SPACE")
-print("SPACE SPACE")
-print("em.dim_gaussians_dict[0]")
-print(em.dim_gaussians_dict[0])
-print("SPACE SPACE")
-print("SPACE SPACE")
+em.fit(X_training)
+print(em.get_dist_params())
 
-em.maximization(X_training)
-print(em.dim_gaussians_dict[0])
 
+# em.init_params(X_training)
+# em.expectation(X_training)
+# nate = em.responsibilities_dict[0]
+# print(em.responsibilities_dict[0])
+# print(em.responsibilities_dict[0].shape)
+# print(np.sum(nate, axis=1))
+# print("SPACE SPACE")
+# print("SPACE SPACE")
+# print("em.dim_gaussians_dict[0]")
+# print(em.dim_gaussians_dict[0])
+# print("SPACE SPACE")
+# print("SPACE SPACE")
+#
+# em.maximization(X_training)
+# print(em.dim_gaussians_dict)
+# print(em.compute_gmm_cost(X_training))
 
