@@ -10,13 +10,40 @@ np.random.seed(42)
 
 
 # calc normal pdf
-def norm_pdf(data, mu, sigma):
-    exp = (((data - mu) / sigma) ** 2) / (-2)
-    base_inv = sigma * ((2 * np.pi) ** 0.5)
-    return (np.e ** exp) / base_inv
+# def norm_pdf(data, mu, sigma):
+#     exp = (((data - mu) / sigma) ** 2) / (-2)
+#     base_inv = sigma * ((2 * np.pi) ** 0.5)
+#     return (np.e ** exp) / base_inv
+#
+#
+# print(norm_pdf(1, np.array([1, 2]), np.array([3, 4])))
+vec1 = np.array([1, 2])
+vec = np.array([5, 6, 7])
+mat = np.array([[1, 2], [3, 4], [5, 3]])
+mat2 = np.array([[7, 2], [3, 4]])
+print(mat)
+print("SPACE")
+# print(np.transpose(np.transpose(mat) * vec))
+# nate = vec.reshape((1, vec.shape[0]))
+# print("nate", nate)
+# print(np.column_stack((vec, vec)))
+nate = np.transpose(np.transpose(np.zeros_like(mat)) + vec)
+print(np.transpose(np.transpose(np.zeros_like(mat)) + vec))
+print("SPACE")
+print((nate - vec1))
+print((nate - vec1) ** 2)
+nate2 = (nate - vec1) ** 2
+print("SPACE")
+print(mat * nate2)
 
 
-print(norm_pdf(1, np.array([1, 2]), np.array([3, 4])))
+
+
+
+
+
+
+
 
 
 

@@ -126,8 +126,8 @@ class EM(object):
         """
         for dim in range(data.shape[1]):
             w_init = np.array([0 for _ in range(self.k)]) + (1 / self.k)
-            cur_mu = X_training[:, dim].mean()
-            cur_std = X_training[:, dim].std()
+            cur_mu = data[:, dim].mean()
+            cur_std = data[:, dim].std()
             rand_min_mu = cur_mu - (2 * cur_std)
             rand_max_mu = cur_mu + (2 * cur_std)
             mu_init = [np.random.uniform(rand_min_mu, rand_max_mu) for _ in range(self.k)]
@@ -140,13 +140,28 @@ class EM(object):
         """
         self.init_params(data)
         for dim in self.dim_gaussians_dict.keys():
-            self.responsibilities_dict[dim] = np.array([norm_pdf(point, self.dim_gaussians_dict[dim][:, 1], self.dim_gaussians_dict[dim][:, 2]) for point in data[:, dim]])
+            responsibilities_mat = np.array([norm_pdf(point, self.dim_gaussians_dict[dim][:, 1], self.dim_gaussians_dict[dim][:, 2]) for point in data[:, dim]])
+            responsibilities_mat = responsibilities_mat * self.dim_gaussians_dict[dim][:, 0]
+            responsibilities_vec_sum_axis1 = np.sum(responsibilities_mat, axis=1)
+            self.responsibilities_dict[dim] = np.transpose((np.transpose(responsibilities_mat) / responsibilities_vec_sum_axis1))
 
     def maximization(self, data):
         """
         M step - updating distribution params
         """
-        pass
+        for dim in self.dim_gaussians_dict.keys():
+            # updating weights
+            responsibilities_avg_vec = np.sum(self.responsibilities_dict[dim], axis=0)
+            self.dim_gaussians_dict[dim][:, 0] = responsibilities_avg_vec / data.shape[0]
+
+            # updating means
+            mu_sum = np.sum(np.transpose((np.transpose(self.responsibilities_dict[dim])) * data[:, dim]), axis=0)
+            self.dim_gaussians_dict[dim][:, 1] = mu_sum / responsibilities_avg_vec
+
+            # updating stds
+            x_i_columns = np.transpose(np.transpose(np.zeros_like(self.responsibilities_dict[dim])) + data[:, dim])
+            std_sum = np.sum(self.responsibilities_dict[dim] * ((x_i_columns - self.dim_gaussians_dict[dim][:, 1]) ** 2), axis=0)
+            self.dim_gaussians_dict[dim][:, 2] = std_sum / responsibilities_avg_vec
 
     def fit(self, data):
         """
@@ -166,9 +181,18 @@ class EM(object):
 
 em = EM(k=2)
 em.expectation(X_training)
+nate = em.responsibilities_dict[0]
 print(em.responsibilities_dict[0])
 print(em.responsibilities_dict[0].shape)
+print(np.sum(nate, axis=1))
+print("SPACE SPACE")
+print("SPACE SPACE")
+print("em.dim_gaussians_dict[0]")
+print(em.dim_gaussians_dict[0])
+print("SPACE SPACE")
+print("SPACE SPACE")
 
-
+em.maximization(X_training)
+print(em.dim_gaussians_dict[0])
 
 
