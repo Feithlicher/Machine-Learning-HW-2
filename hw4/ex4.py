@@ -10,85 +10,6 @@ X_test, y_test = test_set[['x1', 'x2']].values, test_set['y'].values
 # np.random.seed(42)
 
 
-def compute_cost(X, y, theta):
-    J = 0
-    left_side = y * np.inner(X, theta)
-    right_side = np.log(1 + (np.e ** np.inner(X, theta)))
-    J = right_side - left_side
-    return np.sum(J) / X.shape[0]
-
-
-class LogisticRegressionGD(object):
-    """
-    Logistic Regression Classifier using gradient descent.
-
-    Parameters
-    ------------
-    eta : float
-      Learning rate (between 0.0 and 1.0)
-    n_iter : int
-      Passes over the training dataset.
-    eps : float
-      minimal change in the cost to declare convergence
-    random_state : int
-      Random number generator seed for random weight
-      initialization.
-    """
-
-    def __init__(self, theta_shape, eta=0.00005, n_iter=10000, eps=0.000001, random_state=1):
-        self.eta = eta
-        self.n_iter = n_iter
-        self.eps = eps
-        self.random_state = random_state
-        np.random.seed(self.random_state)
-        self.theta = np.random.random(size=theta_shape)
-        self.cost_list = [] # a list of the costs that you've calculated in each iteration
-
-    def fit(self, X, y):
-        """
-        Fit training data (the learning phase).
-        Updating the theta vector in each iteration using gradient descent.
-        Store the theta vector in an attribute of the LogisticRegressionGD object.
-        Stop the function when the difference between the previous cost and the current is less than eps
-        or when you reach n_iter.
-
-        Parameters
-        ----------
-        X : {array-like}, shape = [n_examples, n_features]
-          Training vectors, where n_examples is the number of examples and
-          n_features is the number of features.
-        y : array-like, shape = [n_examples]
-          Target values.
-
-        """
-        J_history = []
-        theta_copy = self.theta.copy()
-        k = 0
-        curr_cost = compute_cost(X, y, theta_copy)
-        J_history.append(0)
-        while (abs(curr_cost - J_history[len(J_history) - 1]) > self.eps) and (k < self.n_iter):
-            if k == 0:
-                J_history.pop()
-            k += 1
-            J_history.append(curr_cost)
-            sigma = 1 / (1 + (np.e ** ((-1) * (np.inner(X, theta_copy)))))
-            sigma -= y
-            Xt_mult_vec = np.transpose(X).dot(sigma)
-            Xt_mult_vec *= self.eta
-            theta_copy = theta_copy - Xt_mult_vec
-            curr_cost = compute_cost(X, y, theta_copy)
-        self.theta = theta_copy
-        self.cost_list = J_history
-
-    def predict(self, X):
-        """Return the predicted class label"""
-        sigma = 1 / (1 + (np.e ** ((-1) * (np.inner(self.theta, X)))))
-        if sigma > 0.5:
-            return 1
-        else:
-            return 0
-
-
 # calc normal pdf
 def norm_pdf(data, mu, sigma):
     exp = (((data - mu) / sigma) ** 2) / (-2)
@@ -266,6 +187,117 @@ class NaiveBayesGaussian(object):
 
 
 
+def compute_cost(X, y, theta):
+    J = 0
+    left_side = y * np.inner(X, theta)
+    right_side = np.log(1 + (np.e ** np.inner(X, theta)))
+    J = right_side - left_side
+    return np.sum(J) / X.shape[0]
+
+
+class LogisticRegressionGD(object):
+    """
+    Logistic Regression Classifier using gradient descent.
+
+    Parameters
+    ------------
+    eta : float
+      Learning rate (between 0.0 and 1.0)
+    n_iter : int
+      Passes over the training dataset.
+    eps : float
+      minimal change in the cost to declare convergence
+    random_state : int
+      Random number generator seed for random weight
+      initialization.
+    """
+
+    def __init__(self, theta_shape, eta=0.00005, n_iter=10000, eps=0.000001, random_state=1):
+        self.eta = eta
+        self.n_iter = n_iter
+        self.eps = eps
+        self.random_state = random_state
+        np.random.seed(self.random_state)
+        self.theta = np.random.random(size=theta_shape)
+        self.cost_list = [] # a list of the costs that you've calculated in each iteration
+
+    def fit(self, X, y):
+        """
+        Fit training data (the learning phase).
+        Updating the theta vector in each iteration using gradient descent.
+        Store the theta vector in an attribute of the LogisticRegressionGD object.
+        Stop the function when the difference between the previous cost and the current is less than eps
+        or when you reach n_iter.
+
+        Parameters
+        ----------
+        X : {array-like}, shape = [n_examples, n_features]
+          Training vectors, where n_examples is the number of examples and
+          n_features is the number of features.
+        y : array-like, shape = [n_examples]
+          Target values.
+
+        """
+        # bias trick
+        ones_col = np.ones(X.shape[0])
+        X = np.column_stack((ones_col, X))
+
+        J_history = []
+        theta_copy = self.theta.copy()
+        k = 0
+        curr_cost = compute_cost(X, y, theta_copy)
+        J_history.append(0)
+        while (abs(curr_cost - J_history[len(J_history) - 1]) > self.eps) and (k < self.n_iter):
+            if k == 0:
+                J_history.pop()
+            k += 1
+            J_history.append(curr_cost)
+            sigma = 1 / (1 + (np.e ** ((-1) * (np.inner(X, theta_copy)))))
+            sigma -= y
+            Xt_mult_vec = np.transpose(X).dot(sigma)
+            Xt_mult_vec *= self.eta
+            theta_copy = theta_copy - Xt_mult_vec
+            curr_cost = compute_cost(X, y, theta_copy)
+        self.theta = theta_copy
+        self.cost_list = J_history
+
+    def predict(self, X):
+        """Return the predicted class label"""
+        # bias trick
+        if len(X.shape) > 1:
+            ones_col = np.ones(X.shape[0])
+            X = np.column_stack((ones_col, X))
+        else:
+            X = np.insert(X, 0, 1)
+
+        sigma = [1 / (1 + (np.e ** ((-1) * (np.inner(self.theta, X)))))]
+        return [1 if sig > 0.5 else 0 for sig in sigma]
+
+# Model Evaluation
+first1000_X_trainig = X_training[:1000]
+first1000_y_training = y_training[:1000]
+first500_X_test = X_test[:500]
+first500_y_test = y_test[:500]
+
+first1000_LoR = LogisticRegressionGD(theta_shape=3, eta=0.05, eps=1e-06)
+first1000_LoR.fit(first1000_X_trainig, first1000_y_training)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # nbg = NaiveBayesGaussian(k=1)
 # nbg.fit(X_training, y_training)
 # one_inst = X_test[0]
@@ -273,12 +305,6 @@ class NaiveBayesGaussian(object):
 # res2 = nbg.predict(X_test)
 # nat = np.column_stack((y_test, res2))
 # print(res2)
-
-
-
-
-
-
 
 
 
