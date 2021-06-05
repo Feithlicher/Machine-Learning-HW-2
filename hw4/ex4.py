@@ -7,7 +7,7 @@ training_set = pd.read_csv('training_set.csv')
 test_set = pd.read_csv('test_set.csv')
 X_training, y_training = training_set[['x1', 'x2']].values, training_set['y'].values
 X_test, y_test = test_set[['x1', 'x2']].values, test_set['y'].values
-np.random.seed(42)
+# np.random.seed(42)
 
 
 def compute_cost(X, y, theta):
@@ -195,10 +195,96 @@ class EM(object):
         return self.dim_gaussians_dict
 
 
+class NaiveBayesGaussian(object):
+    """
+    Naive Bayes Classifier using Gauusian Mixture Model (EM) for calculating the likelihood.
 
-em = EM(k=2)
-em.fit(X_training)
-print(em.get_dist_params())
+    Parameters
+    ------------
+    k : int
+      Number of gaussians in each dimension
+    random_state : int
+      Random number generator seed for random params initialization.
+    """
+
+    def __init__(self, k=1):
+        self.k = k
+        self.cls0_prior = 0
+        self.cls1_prior = 0
+        self.cls0_gaussians_dict = {}
+        self.cls1_gaussians_dict = {}
+
+    def fit(self, X, y):
+        """
+        Fit training data.
+
+        Parameters
+        ----------
+        X : array-like, shape = [n_examples, n_features]
+          Training vectors, where n_examples is the number of examples and
+          n_features is the number of features.
+        y : array-like, shape = [n_examples]
+          Target values.
+        """
+        # training classes partition
+        dataset = np.column_stack((X, y))
+        cls0 = np.array([vec for vec in dataset if vec[-1] == 0])
+        cls1 = np.array([vec for vec in dataset if vec[-1] == 1])
+        cls0 = cls0[:, 0:2]
+        cls1 = cls1[:, 0:2]
+
+        # get priors
+        self.cls0_prior = cls0.shape[0] / dataset.shape[0]
+        self.cls1_prior = cls1.shape[0] / dataset.shape[0]
+
+        # get classes distribution parameters
+        cls0_em = EM(self.k)
+        cls1_em = EM(self.k)
+        cls0_em.fit(cls0)
+        cls1_em.fit(cls1)
+        self.cls0_gaussians_dict = cls0_em.get_dist_params()
+        self.cls1_gaussians_dict = cls1_em.get_dist_params()
+
+    def get_likelihood(self, X, cls_gaussians_dict):
+        dim_pdf_vec = []
+        for dim in cls_gaussians_dict.keys():
+            if len(X.shape) > 1:
+                pdf_mat = np.array([norm_pdf(point, cls_gaussians_dict[dim][:, 1], cls_gaussians_dict[dim][:, 2]) for point in X[:, dim]])
+            else:
+                pdf_mat = np.array([norm_pdf(X, cls_gaussians_dict[dim][:, 1], cls_gaussians_dict[dim][:, 2])])
+            pdf_mat = pdf_mat * cls_gaussians_dict[dim][:, 0]
+            dim_pdf_vec.append(np.sum(pdf_mat, axis=1))
+        return dim_pdf_vec[0] * dim_pdf_vec[1]
+
+    def predict(self, X):
+        """Return the predicted class label"""
+        cls0_post = self.get_likelihood(X, self.cls0_gaussians_dict) * self.cls0_prior
+        cls1_post = self.get_likelihood(X, self.cls1_gaussians_dict) * self.cls1_prior
+        bool_ind_vec = cls1_post > cls0_post
+        return np.where(bool_ind_vec==False, 0, bool_ind_vec)
+
+
+
+
+# nbg = NaiveBayesGaussian(k=1)
+# nbg.fit(X_training, y_training)
+# one_inst = X_test[0]
+# # res = nbg.get_likelihood(one_inst, nbg.cls0_gaussians_dict)
+# res2 = nbg.predict(X_test)
+# nat = np.column_stack((y_test, res2))
+# print(res2)
+
+
+
+
+
+
+
+
+
+# em = EM(k=2)
+# em.fit(X_training)
+# print(em.get_dist_params())
 
 
 # em.init_params(X_training)
@@ -218,3 +304,17 @@ print(em.get_dist_params())
 # print(em.dim_gaussians_dict)
 # print(em.compute_gmm_cost(X_training))
 
+
+
+
+# dataset = np.column_stack((X_training, y_training))
+# cls0 = np.array([vec for vec in dataset if vec[-1] == 0])
+# cls1 = np.array([vec for vec in dataset if vec[-1] == 1])
+# cls0 = cls0[:, 0:2]
+# cls1 = cls1[:, 0:2]
+#
+# # cls0_em = EM(2)
+# cls1_em = EM(2)
+# # cls0_em.fit(cls0)
+# cls1_em.fit(cls1)
+# print()
